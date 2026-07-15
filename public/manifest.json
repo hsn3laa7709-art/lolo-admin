@@ -1,0 +1,21 @@
+{
+  "short_name": "LOLO ADMIN",
+  "name": "LOLO STORE | لوحة تحكم الأدمن",
+  "icons": [
+    {
+      "src": "/assets/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
+    },
+    {
+      "src": "/assets/logo.jpg",
+      "type": "image/jpeg",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#F7F3EA",
+  "theme_color": "#A96F6B",
+  "display": "standalone",
+  "orientation": "portrait"
+}

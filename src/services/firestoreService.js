@@ -212,3 +212,30 @@ export async function deleteCoupon(couponId) {
     throw err;
   }
 }
+
+// ==========================================
+// 5. STORE SETTINGS SERVICES
+// ==========================================
+export async function getStoreSettings() {
+  try {
+    const settingsDoc = doc(db, 'settings', 'store');
+    const snap = await getDoc(settingsDoc);
+    if (!snap.exists()) return null;
+    return snap.data();
+  } catch (err) {
+    console.error('Error fetching store settings:', err);
+    throw err;
+  }
+}
+
+export async function updateStoreSettings(settingsData) {
+  try {
+    const settingsDoc = doc(db, 'settings', 'store');
+    await setDoc(settingsDoc, settingsData, { merge: true });
+    return true;
+  } catch (err) {
+    console.error('Error updating store settings:', err);
+    throw err;
+  }
+}
+

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
   LayoutDashboard, 
@@ -10,8 +10,12 @@ import {
   Menu, 
   X,
   UserCheck,
-  FolderHeart
+  FolderHeart,
+  Settings
 } from 'lucide-react';
+import { db, rtdb } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { ref, onValue } from 'firebase/database';
 
 // Real Sub-components imports
 import DashboardOverview from './DashboardOverview';
@@ -20,19 +24,105 @@ import OrdersTab from './OrdersTab';
 import ChatTab from './ChatTab';
 import CouponsTab from './CouponsTab';
 import CategoriesTab from './CategoriesTab';
+import SettingsTab from './SettingsTab';
 
 export default function Dashboard() {
   const { currentUser, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0);
+  
+  const sessionStartRef = useRef(Date.now());
+  const prevPendingOrdersCountRef = useRef(-1);
+  const lastNotifiedMsgTimesRef = useRef({});
+
+  // Request browser notification permissions on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // 1. Listen to PENDING orders in real-time
+  useEffect(() => {
+    const ordersCol = collection(db, 'orders');
+    const q = query(ordersCol, where('status', '==', 'PENDING'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const size = snapshot.size;
+      setPendingOrdersCount(size);
+      
+      // Dispatch browser notification if order count increased
+      if (prevPendingOrdersCountRef.current !== -1 && size > prevPendingOrdersCountRef.current) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('طلب جديد وارد! 📦', {
+            body: 'تم تلقي طلب أوردر جديد قيد المراجعة في لوحة التحكم.',
+            icon: '/assets/logo.jpg',
+            tag: 'lolo-admin-new-order'
+          });
+        }
+      }
+      prevPendingOrdersCountRef.current = size;
+    }, (error) => {
+      console.error("Error listening to pending orders:", error);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // 2. Listen to active chats in RTDB to count unread customer messages
+  useEffect(() => {
+    const chatsRef = ref(rtdb, 'chats');
+    const unsubscribe = onValue(chatsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        let unreadCount = 0;
+        Object.keys(data).forEach(key => {
+          const room = data[key];
+          if (room.active === true || room.active === undefined) {
+            const messagesObj = room.messages || {};
+            const msgIds = Object.keys(messagesObj);
+            if (msgIds.length > 0) {
+              msgIds.sort((a, b) => Number(a) - Number(b));
+              const lastMsg = messagesObj[msgIds[msgIds.length - 1]];
+              if (lastMsg.sender === 'user') {
+                unreadCount++;
+                
+                // Dispatch browser notification for new message
+                if (Number(lastMsg.id || 0) > sessionStartRef.current) {
+                  const lastNotifiedTime = lastNotifiedMsgTimesRef.current[key] || 0;
+                  if (Number(lastMsg.id || 0) > lastNotifiedTime) {
+                    lastNotifiedMsgTimesRef.current[key] = Number(lastMsg.id || 0);
+                    if ('Notification' in window && Notification.permission === 'granted') {
+                      new Notification(`رسالة من ${room.customerName || 'عميلة'} 💬`, {
+                        body: lastMsg.text,
+                        icon: '/assets/logo.jpg',
+                        tag: `lolo-admin-chat-${key}`
+                      });
+                    }
+                  }
+                }
+              }
+            }
+          }
+        });
+        setUnreadChatsCount(unreadCount);
+      } else {
+        setUnreadChatsCount(0);
+      }
+    }, (error) => {
+      console.error("Error listening to chats:", error);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const menuItems = [
     { id: 'overview', label: 'لوحة الإحصائيات', icon: LayoutDashboard },
     { id: 'products', label: 'إدارة المنتجات', icon: ShoppingBag },
     { id: 'categories', label: 'إدارة الأقسام', icon: FolderHeart },
-    { id: 'orders', label: 'إدارة الطلبات', icon: FileText },
-    { id: 'chat', label: 'شات الدعم الفني', icon: MessageSquare },
+    { id: 'orders', label: 'إدارة الطلبات', icon: FileText, badge: pendingOrdersCount },
+    { id: 'chat', label: 'شات الدعم الفني', icon: MessageSquare, badge: unreadChatsCount },
     { id: 'coupons', label: 'الكوبونات والخصومات', icon: Ticket },
+    { id: 'settings', label: 'إعدادات المتجر', icon: Settings },
   ];
 
   const handleLogout = async () => {
@@ -58,6 +148,8 @@ export default function Dashboard() {
         return <ChatTab />;
       case 'coupons':
         return <CouponsTab />;
+      case 'settings':
+        return <SettingsTab />;
       default:
         return <div>التبويب غير متوفر.</div>;
     }
@@ -104,14 +196,23 @@ export default function Dashboard() {
                   setActiveTab(item.id);
                   setSidebarOpen(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all text-right cursor-pointer ${
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all text-right cursor-pointer ${
                   isActive 
                     ? 'bg-[#A96F6B] text-white shadow-sm' 
                     : 'text-[#77736D] hover:bg-[#EDE7D9]/40 hover:text-[#30343B]'
                 }`}
               >
-                <Icon size={18} className="shrink-0" />
-                <span>{item.label}</span>
+                <div className="flex items-center gap-3">
+                  <Icon size={18} className="shrink-0" />
+                  <span>{item.label}</span>
+                </div>
+                {item.badge > 0 && (
+                  <span className={`px-2 py-0.5 text-xs font-bold rounded-full ${
+                    isActive ? 'bg-white text-[#A96F6B]' : 'bg-[#E15A5A] text-white'
+                  }`}>
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}

@@ -339,7 +339,6 @@ export default function OrdersTab() {
                     <tr className="bg-[#EDE7D9]/20 border-b border-[#D8CFC0] text-[#77736D] font-bold">
                       <th className="p-3">المنتج</th>
                       <th className="p-3 text-center">اللون</th>
-                      <th className="p-3 text-center">المقاس</th>
                       <th className="p-3 text-center">الكمية</th>
                       <th className="p-3 text-left">سعر القطعة</th>
                       <th className="p-3 text-left">الإجمالي</th>
@@ -355,7 +354,6 @@ export default function OrdersTab() {
                         <td className="p-3 text-center">
                           <span className="inline-block w-4 h-4 rounded-full border border-black/10" style={{ backgroundColor: item.color }} />
                         </td>
-                        <td className="p-3 text-center font-bold">{item.size}</td>
                         <td className="p-3 text-center font-bold">{item.quantity}</td>
                         <td className="p-3 text-left">{item.price} EGP</td>
                         <td className="p-3 text-left font-bold text-[#A96F6B]">{item.price * item.quantity} EGP</td>

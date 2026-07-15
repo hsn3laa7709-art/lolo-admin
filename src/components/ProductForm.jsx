@@ -21,19 +21,17 @@ export default function ProductForm({ product, onSave, onCancel }) {
     discount: 0,
     category: '', // Starts empty, will be set on categories load
     description: '',
+    descriptionEn: '',
     bestSeller: false,
     featured: false,
     images: [],
     colors: []
   });
 
-  const [selectedSizes, setSelectedSizes] = useState(['M']);
   const [newColor, setNewColor] = useState('#FFFFFF');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
-
-  const sizesOptions = ['S', 'M', 'L', 'XL', 'XXL'];
 
   // Fetch categories from database on mount
   useEffect(() => {
@@ -64,14 +62,12 @@ export default function ProductForm({ product, onSave, onCancel }) {
         discount: product.discount || 0,
         category: product.category || 'Modest',
         description: product.description || '',
+        descriptionEn: product.descriptionEn || '',
         bestSeller: !!product.bestSeller,
         featured: !!product.featured,
         images: product.images || [],
         colors: product.colors || []
       });
-      if (product.sizes) {
-        setSelectedSizes(product.sizes);
-      }
     }
   }, [product]);
 
@@ -148,13 +144,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
     }));
   };
 
-  const handleSizeToggle = (size) => {
-    if (selectedSizes.includes(size)) {
-      setSelectedSizes(prev => prev.filter(s => s !== size));
-    } else {
-      setSelectedSizes(prev => [...prev, size]);
-    }
-  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -174,7 +164,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
         price: Number(formData.price),
         oldPrice: Number(formData.oldPrice) || 0,
         discount: Number(formData.discount) || 0,
-        sizes: selectedSizes,
+        sizes: [],
         hoverImage: formData.images[1] || formData.images[0] // Set second image as hover, fallback to first
       };
       await onSave(finalProductData);
@@ -294,17 +284,32 @@ export default function ProductForm({ product, onSave, onCancel }) {
             </div>
 
             {/* Description */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-[#77736D] uppercase block">وصف المنتج بالتفصيل</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="تفاصيل حول جودة الخامة والمقاسات وإرشادات الغسيل..."
-                rows={5}
-                className="w-full px-4 py-2.5 bg-[#F7F3EA] border border-[#D8CFC0] rounded-xl text-sm focus:ring-2 focus:ring-[#A96F6B] focus:outline-none transition-all"
-                required
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[#77736D] uppercase block">وصف المنتج بالتفصيل (بالعربية)</label>
+                <textarea
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="تفاصيل حول جودة الخامة والمقاسات وإرشادات الغسيل..."
+                  rows={4}
+                  className="w-full px-4 py-2.5 bg-[#F7F3EA] border border-[#D8CFC0] rounded-xl text-sm focus:ring-2 focus:ring-[#A96F6B] focus:outline-none transition-all"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[#77736D] uppercase block">Product Description (English)</label>
+                <textarea
+                  name="descriptionEn"
+                  value={formData.descriptionEn}
+                  onChange={handleInputChange}
+                  placeholder="Details about material quality, sizing, washing instructions..."
+                  rows={4}
+                  dir="ltr"
+                  className="w-full px-4 py-2.5 bg-[#F7F3EA] border border-[#D8CFC0] rounded-xl text-sm focus:ring-2 focus:ring-[#A96F6B] focus:outline-none transition-all"
+                  required
+                />
+              </div>
             </div>
 
             {/* Badges / Promotions */}
@@ -452,30 +457,7 @@ export default function ProductForm({ product, onSave, onCancel }) {
             )}
           </div>
 
-          {/* Sizes Selector Card */}
-          <div className="bg-[#FFFCF7] border border-[#D8CFC0] rounded-3xl p-6 shadow-sm space-y-4">
-            <h3 className="text-sm font-bold block uppercase border-b border-[#EDE7D9] pb-2">المقاسات المتاحة</h3>
-            
-            <div className="flex flex-wrap gap-3">
-              {sizesOptions.map(size => {
-                const isActive = selectedSizes.includes(size);
-                return (
-                  <button
-                    key={size}
-                    type="button"
-                    onClick={() => handleSizeToggle(size)}
-                    className={`px-4 py-2 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      isActive 
-                        ? 'bg-[#30343B] text-white border-transparent' 
-                        : 'bg-[#FFFCF7] border-[#D8CFC0] text-[#30343B] hover:bg-[#EDE7D9]/30'
-                    }`}
-                  >
-                    {size}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+
 
           {/* Submit Block */}
           <button
